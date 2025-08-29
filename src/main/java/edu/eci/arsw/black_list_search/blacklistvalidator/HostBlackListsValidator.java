@@ -6,8 +6,12 @@
 package edu.eci.arsw.black_list_search.blacklistvalidator;
 
 import edu.eci.arsw.black_list_search.spamkeywordsdatasource.HostBlacklistsDataSourceFacade;
+
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -17,7 +21,9 @@ import java.util.logging.Logger;
  */
 public class HostBlackListsValidator {
 
-    private static final int BLACK_LIST_ALARM_COUNT=5;
+    public static final int BLACK_LIST_ALARM_COUNT=5;
+
+    private static final Logger LOG = Logger.getLogger(HostBlackListsValidator.class.getName());
     
     /**
      * Check the given host's IP address in all the available black lists,
@@ -35,11 +41,15 @@ public class HostBlackListsValidator {
 
         int serversPerThread = totalServers / nThreads;
         List<HostBlackListThread> threads = new LinkedList<>();
+
+        List<Integer> sharedOcurrences = Collections.synchronizedList(new LinkedList<>());
+        AtomicInteger sharedOcurrencesCount = new AtomicInteger(0);
+        AtomicBoolean stopFlag = new AtomicBoolean(false);
         
         for(int i=0; i<nThreads; i++){
             int start = i * serversPerThread;
             int end = (i == nThreads - 1) ? totalServers : start + serversPerThread;
-            HostBlackListThread thread = new HostBlackListThread(ipaddress, start, end, skds);
+            HostBlackListThread thread = new HostBlackListThread(ipaddress, start, end, skds, sharedOcurrences, sharedOcurrencesCount, stopFlag);
             threads.add(thread);
             thread.start();
         }
