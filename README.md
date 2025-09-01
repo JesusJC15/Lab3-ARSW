@@ -16,6 +16,7 @@ Control de hilos con wait/notify. Productor/consumidor.
 1. Revise el funcionamiento del programa y ejecútelo. Mientras esto ocurren, ejecute jVisualVM y revise el consumo de CPU del proceso correspondiente. A qué se debe este consumo?, cual es la clase responsable?
 
 - VisualVM
+
 ![](img/parte1/1.png)
 
 - ¿A qué se debe este consumo?
@@ -33,15 +34,19 @@ La clase Consumer
 Usando el mecanismo de sincronización (wait/notify)
 
 - Producer
+
 ![](img/parte1/3.png)
 
 - Consumer
+
 ![](img/parte1/4.png)
 
 - Ejecución antes de correcciones:
+
 ![](img/parte1/1.png)
 
 - Ejecución después de correcciones:
+
 ![](img/parte1/5.png)
 
 3. Haga que ahora el productor produzca muy rápido, y el consumidor consuma lento. Teniendo en cuenta que el productor conoce un límite de Stock (cuantos elementos debería tener, a lo sumo en la cola), haga que dicho límite se respete. Revise el API de la colección usada como cola para ver cómo garantizar que dicho límite no se supere. Verifique que, al poner un límite pequeño para el 'stock', no haya consumo alto de CPU ni errores.
@@ -49,15 +54,19 @@ Usando el mecanismo de sincronización (wait/notify)
 Usando los métodos put() y take() de la clase BlockingQueue
 
 - Producer
+
 ![](img/parte1/6.png)
 
 - Consumer
+
 ![](img/parte1/7.png)
 
 - StartProduction
+
 ![](img/parte1/8.png)
 
 - Ejecución después de la refactorización con capacidad de 10:
+
 ![](img/parte1/9.png)
 
 ##### Parte II. – Antes de terminar la clase.
@@ -67,8 +76,19 @@ Teniendo en cuenta los conceptos vistos de condición de carrera y sincronizaci�
 - La búsqueda distribuida se detenga (deje de buscar en las listas negras restantes) y retorne la respuesta apenas, en su conjunto, los hilos hayan detectado el número de ocurrencias requerido que determina si un host es confiable o no (_BLACK_LIST_ALARM_COUNT_).
 - Lo anterior, garantizando que no se den condiciones de carrera.
 
-![](img/parte2/antes.png)
+- Importación de el buscador de listas negras:
+
 ![](img/parte2/1.png)
+
+- Antes de refactorización:
+
+![](img/parte2/antes.png)
+
+- Después de refactorización:
+
+![](img/parte2/despues.png)
+
+Se aprecian mejoras en el tiempo de ejecución
 
 ##### Parte III. – Avance para el martes, antes de clase.
 
@@ -85,11 +105,52 @@ Sincronización y Dead-Locks.
 
 2. Revise el código e identifique cómo se implemento la funcionalidad antes indicada. Dada la intención del juego, un invariante debería ser que la sumatoria de los puntos de vida de todos los jugadores siempre sea el mismo(claro está, en un instante de tiempo en el que no esté en proceso una operación de incremento/reducción de tiempo). Para este caso, para N jugadores, cual debería ser este valor?.
 
+Cada inmortal tiene una salud por defecto de 100
+
+![](img/parte3/1.png)
+
+Entonces si hay N inmortales, la salud total inicial es:
+Salud total inicial = N * 100
+
+En cada pelea:
+- El atacante gana + 10 por el valor de DEFAULT_DAMAGE_VALUE.
+- El defensor pierde -10.
+- La suma global no cambia porque se transfiere la salud entre atacantes y defensores.
+
+Por lo que este valor siempre es el mismo, en este caso:
+N * DEFAULT_INMORTAL_HEALTH(en este caso 100)
+
 3. Ejecute la aplicación y verifique cómo funcionan las opción ‘pause and check’. Se cumple el invariante?.
+
+![](img/parte3/2.png)
+
+No se cumple ya que para 3 inmortales la suma total de la salud debería ser de 300, pero en este caso es de 90.
 
 4. Una primera hipótesis para que se presente la condición de carrera para dicha función (pause and check), es que el programa consulta la lista cuyos valores va a imprimir, a la vez que otros hilos modifican sus valores. Para corregir esto, haga lo que sea necesario para que efectivamente, antes de imprimir los resultados actuales, se pausen todos los demás hilos. Adicionalmente, implemente la opción ‘resume’.
 
+Uso de AtomicBoolean para la pausa de los hilos
+
+- En la clase Inmortal:
+
+![](img/parte3/3.png)
+
+![](img/parte3/4.png)
+
+![](img/parte3/5.png)
+
+- Botón de pause and check:
+
+![](img/parte3/6.png)
+
+- Botón de resume:
+
+![](img/parte3/7.png)
+
 5. Verifique nuevamente el funcionamiento (haga clic muchas veces en el botón). Se cumple o no el invariante?.
+
+No se cumple el invariante:
+
+![](img/parte3/8.png)
 
 6. Identifique posibles regiones críticas en lo que respecta a la pelea de los inmortales. Implemente una estrategia de bloqueo que evite las condiciones de carrera. Recuerde que si usted requiere usar dos o más ‘locks’ simultáneamente, puede usar bloques sincronizados anidados:
 
@@ -101,17 +162,83 @@ Sincronización y Dead-Locks.
 	}
 	```
 
+Regiones críticas:
+
+- fight(): Un hilo resta vida al otro y luego se suma vida a sí mismo, esto ocurre en paralelo con otros hilos que pueden estar leyendo o modificando las mismas variables.
+
+![](img/parte3/9.png)
+
+- changeHealth() y getHealth: No están sincronizados, por lo que lecturas/escrituras concurrentes rompen la consistencia.
+
+![](img/parte3/10.png)
+
+Estrategia de bloqueo: se necesitan bloquear los dos inmortales que pelean, para que ninguna otra pelea los modifique mientras la batalla ocurre, por lo que vamos a adquirir los locks en el mismo orden para evitar deadlock.
+
+Refactorización de regiones críticas:
+
+![](img/parte3/11.png)
+
+![](img/parte3/12.png)
+
 7. Tras implementar su estrategia, ponga a correr su programa, y ponga atención a si éste se llega a detener. Si es así, use los programas jps y jstack para identificar por qué el programa se detuvo.
+
+Hubo bloqueos en:
+
+![](img/parte3/13.png)
+
+![](img/parte3/14.png)
 
 8. Plantee una estrategia para corregir el problema antes identificado (puede revisar de nuevo las páginas 206 y 207 de _Java Concurrency in Practice_).
 
+Estrategia: antes de sincronizar se decide un orden global con System.identityHashCode(), todos los hilos siguen ese orden y se elimina la posibilidad de interbloqueo.
+
+Refactorización:
+
+![](img/parte3/15.png)
+
 9. Una vez corregido el problema, rectifique que el programa siga funcionando de manera consistente cuando se ejecutan 100, 1000 o 10000 inmortales. Si en estos casos grandes se empieza a incumplir de nuevo el invariante, debe analizar lo realizado en el paso 4.
+
+- 100
+
+![](img/parte3/16.png)
+
+- 1000
+
+![](img/parte3/17.png)
+
+- 10000
+
+![](img/parte3/18.png)
+
+Por lo evidenciado se sigue compliento el invariante.
 
 10. Un elemento molesto para la simulación es que en cierto punto de la misma hay pocos 'inmortales' vivos realizando peleas fallidas con 'inmortales' ya muertos. Es necesario ir suprimiendo los inmortales muertos de la simulación a medida que van muriendo. Para esto:
 	* Analizando el esquema de funcionamiento de la simulación, esto podría crear una condición de carrera? Implemente la funcionalidad, ejecute la simulación y observe qué problema se presenta cuando hay muchos 'inmortales' en la misma. Escriba sus conclusiones al respecto en el archivo RESPUESTAS.txt.
 	* Corrija el problema anterior __SIN hacer uso de sincronización__, pues volver secuencial el acceso a la lista compartida de inmortales haría extremadamente lenta la simulación.
 
+Corrección usando estructuras concurrentes que soporten modificaciones desde múltiples hilos, en lugar de bloquear todo con synchronized.
+
+![](img/parte3/19.png)
+
+![](img/parte3/20.png)
+
 11. Para finalizar, implemente la opción STOP.
+
+- Immortal:
+
+![](img/parte3/21.png)
+
+![](img/parte3/22.png)
+
+![](img/parte3/23.png)
+
+- ControlFrame:
+
+![](img/parte3/24.png)
+
+- STOP:
+
+![](img/parte3/25.png)
 
 <!--
 ### Criterios de evaluación

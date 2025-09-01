@@ -1,0 +1,42 @@
+¿Habrá condición de carrera al eliminar inmortales muertos?
+
+Sí, ahora mismo todos los hilos Immortal comparten la misma lista immortalsPopulation.
+Por lo que si un hilo elimina a un inmortal muerto mientras otro hilo está iterando la lista (para elegir contrincante, por ejemplo), se producen varios conflictos.
+
+Implementar eliminación con conflictos:
+
+public void fight(Immortal i2) {
+    Immortal first = this;
+    Immortal second = i2;
+
+    if(System.identityHashCode(first) > System.identityHashCode(second)){
+        first = i2;
+        second = this;
+    }
+
+    synchronized (first) {
+        synchronized (second) {
+            if (i2.getHealth() > 0) {
+                i2.changeHealth(i2.getHealth() - defaultDamageValue);
+                this.health += defaultDamageValue;
+                updateCallback.processReport("Fight: " + this + " vs " + i2 + "\n");
+                if(i2.getHealth()<=0){
+                    immortalsPopulation.remove(i2);
+                }
+            } else {
+                updateCallback.processReport(this + " says:" + i2 + " is already dead!\n");
+            }
+        }
+    }
+}
+
+Problemas presentados:
+Exception in thread "im2" Exception in thread "im1" Exception in thread "im0" java.lang.IllegalArgumentException: bound must be positive
+        at java.util.Random.nextInt(Random.java:388)
+        at edu.eci.arsw.highlandersim.Immortal.run(Immortal.java:39)
+java.lang.IllegalArgumentException: bound must be positive
+        at java.util.Random.nextInt(Random.java:388)
+        at edu.eci.arsw.highlandersim.Immortal.run(Immortal.java:39)
+java.lang.IllegalArgumentException: bound must be positive
+        at java.util.Random.nextInt(Random.java:388)
+        at edu.eci.arsw.highlandersim.Immortal.run(Immortal.java:39)
