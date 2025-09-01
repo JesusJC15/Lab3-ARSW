@@ -5,8 +5,6 @@
  */
 package edu.eci.arsw.black_list_search.blacklistvalidator;
 
-import edu.eci.arsw.black_list_search.spamkeywordsdatasource.HostBlacklistsDataSourceFacade;
-
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -14,6 +12,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import edu.eci.arsw.black_list_search.spamkeywordsdatasource.HostBlacklistsDataSourceFacade;
 
 /**
  *
@@ -54,19 +54,20 @@ public class HostBlackListsValidator {
             thread.start();
         }
         
-        List<Integer> blackListOcurrences = new LinkedList<>();
+
         int checkedListsCount = 0;
         for(HostBlackListThread thread : threads) {
             try {
                 thread.join();
-                blackListOcurrences.addAll(thread.getLocalOcurrences());
-                checkedListsCount += thread.getCheckedLists();
+                if (threads instanceof HostBlackListThread) {
+                    checkedListsCount += ((HostBlackListThread) thread).getCheckedLists();
+                }
             } catch (InterruptedException ex) {
                 LOG.log(Level.SEVERE, "Thread interrupted", ex);
             }
         }
 
-        if (blackListOcurrences.size() >= BLACK_LIST_ALARM_COUNT) {
+        if (sharedOcurrencesCount.get() >= BLACK_LIST_ALARM_COUNT) {
             skds.reportAsNotTrustworthy(ipaddress);
         } else {
             skds.reportAsTrustworthy(ipaddress);
@@ -74,9 +75,6 @@ public class HostBlackListsValidator {
         
         LOG.log(Level.INFO, "Checked Black Lists:{0} of {1}", new Object[]{checkedListsCount, totalServers});
         
-        return blackListOcurrences;
-    }
-    
-    private static final Logger LOG = Logger.getLogger(HostBlackListsValidator.class.getName());    
-    
+        return new LinkedList<>(sharedOcurrences);
+    }  
 }
